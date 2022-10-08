@@ -3,6 +3,6 @@ package main
 import "newsmere/internal/engine"
 
 func main() {
-	e := engine.Engine{}
+	e := engine.New("")
 	e.Run()
 }

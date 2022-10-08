@@ -1,32 +1,8 @@
 package types
 
-type BackendType int8
+type StatusText string
 
 const (
-	NNTP BackendType = iota
-	IMAP
-	RSS
+	StatusUp   = "up"
+	StatusDown = "down"
 )
-
-type Backend interface {
-	GetType() BackendType
-	GetName() string
-	IsRunning() bool
-
-	Run() error
-	Stop() error
-	Restart() error
-}
-
-type ServiceType int8
-
-const (
-	Nntp ServiceType = iota
-	Api
-	GraphQL
-	Web
-)
-
-type Service struct {
-	Type ServiceType
-}

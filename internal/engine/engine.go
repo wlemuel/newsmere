@@ -1,73 +1,98 @@
 package engine
 
 import (
-	"fmt"
-	"newsmere/internal/db"
-	"newsmere/internal/nntp"
-	"newsmere/internal/types"
+	"encoding/json"
+	"log"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
-
-type Backend interface {
-	GetType() types.BackendType
-	GetName() string
-	IsRunning() bool
-
-	Run() error
-	Stop() error
-	Restart() error
-}
-
-type Service struct {
-	Type types.ServiceType
-}
 
 // Engine for managing the whole system.
 type Engine struct {
-	Backends []Backend
+	Backends []Backend `json:"backends"`
+	Services []Service `json:"services"`
 }
 
-// AddService for adding service to engine.
-func (e *Engine) AddBackend(b Backend) {
-	e.Backends = append(e.Backends, b)
-}
-
-func (e *Engine) Run() {
-	fmt.Println("Hello, Newsmere!")
-	db.GetManager()
-	e.startBackends()
-	e.startServices()
-}
-
-func (e *Engine) Stop() {
-	for _, b := range e.Backends {
-		b.Stop()
+func New(configFile string) Engine {
+	if configFile == "" {
+		configFile = "config.json"
 	}
-}
 
-func (e *Engine) startBackends() {
-	backend, err := nntp.NewClient("tcp", "127.0.0.1:1119")
+	configBytes, err := os.ReadFile(configFile)
 	if err != nil {
-		panic("failed to setup backends")
+		log.Fatal(err)
 	}
-	backend.Command("mode reader", 2)
-	e.AddBackend(backend)
+
+	var e Engine
+	err = json.Unmarshal(configBytes, &e)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return e
 }
 
-func (e *Engine) startServices() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+func (e *Engine) UnmarshalJSON(b []byte) error {
+	type engine2 *Engine
+	_ = json.Unmarshal(b, engine2(e))
 
-	for {
-		select {
-		case <-c:
-			e.Stop()
-			return
-		case <-time.After(60 * time.Second):
-			fmt.Println("Hello in a loop")
+	// clean the state
+	e.Backends = []Backend{}
+	e.Services = []Service{}
+
+	raw := struct {
+		Backends []json.RawMessage `json:"backends"`
+		Services []json.RawMessage `json:"services"`
+	}{}
+
+	err := json.Unmarshal(b, &raw)
+	if err != nil {
+		return err
+	}
+
+	configTypes := struct {
+		Backends []struct {
+			Type string `json:"type"`
+		}
+		Services []struct {
+			Type string `json:"type"`
+		}
+	}{}
+	err = json.Unmarshal(b, &configTypes)
+	if err != nil {
+		return err
+	}
+
+	for i, b := range configTypes.Backends {
+		backend, err := backendDecode(b.Type, raw.Backends[i])
+		if err != nil {
+			return err
+		}
+		e.Backends = append(e.Backends, backend)
+	}
+
+	for i, s := range configTypes.Services {
+		service, err := serviceDecode(s.Type, raw.Services[i])
+		if err != nil {
+			return err
+		}
+		e.Services = append(e.Services, service)
+	}
+	return nil
+}
+
+func (e *Engine) Run() error {
+	for _, b := range e.Backends {
+		err := b.Start()
+		if err != nil {
+			return err
 		}
 	}
+
+	for _, s := range e.Services {
+		err := s.Start()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

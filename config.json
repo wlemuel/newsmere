@@ -1,0 +1,17 @@
+{
+    "backends": [
+        {
+            "type": "nntp",
+            "name": "gwene",
+            "server": "localhost",
+            "port": 1119
+        }
+    ],
+    "services": [
+        {
+            "type": "nntp",
+            "host": "localhost",
+            "port": 10119
+        }
+    ]
+}

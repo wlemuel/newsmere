@@ -11,92 +11,8 @@ import (
 	"strings"
 )
 
-// NNTPError is coded NNTP error message.
-type NNTPError struct {
-	Code int
-	Msg  string
-}
-
-// ErrNoSuchGroup is returned for a request for a group that can't be found.
-var ErrNoSuchGroup = &NNTPError{411, "No such newsgroup"}
-
-// ErrNoSuchGroup is returned for a request that requires a current
-// group when none has been selected.
-var ErrNoGroupSelected = &NNTPError{412, "No newsgroup selected"}
-
-// ErrInvalidMessageID is returned when a message is requested that can't be found.
-var ErrInvalidMessageID = &NNTPError{430, "No article with that message-id"}
-
-// ErrInvalidArticleNumber is returned when an article is requested that can't be found.
-var ErrInvalidArticleNumber = &NNTPError{423, "No article with that number"}
-
-// ErrNoCurrentArticle is returned when a command is executed that
-// requires a current article when one has not been selected.
-var ErrNoCurrentArticle = &NNTPError{420, "Current article number is invalid"}
-
-// ErrUnknownCommand is returned for unknown comands.
-var ErrUnknownCommand = &NNTPError{500, "Unknown command"}
-
-// ErrSyntax is returned when a command can't be parsed.
-var ErrSyntax = &NNTPError{501, "not supported, or syntax error"}
-
-// ErrPostingNotPermitted is returned as the response to an attempt to
-// post an article where posting is not permitted.
-var ErrPostingNotPermitted = &NNTPError{440, "Posting not permitted"}
-
-// ErrPostingFailed is returned when an attempt to post an article fails.
-var ErrPostingFailed = &NNTPError{441, "posting failed"}
-
-// ErrNotWanted is returned when an attempt to post an article is
-// rejected due the server not wanting the article.
-var ErrNotWanted = &NNTPError{435, "Article not wanted"}
-
-// ErrAuthRequired is returned to indicate authentication is required
-// to proceed.
-var ErrAuthRequired = &NNTPError{450, "authorization required"}
-
-// ErrAuthRejected is returned for invalid authentication.
-var ErrAuthRejected = &NNTPError{452, "authorization rejected"}
-
-// ErrNotAuthenticated is returned when a command is issued that requires
-// authentication, but authentication was not provided.
-var ErrNotAuthenticated = &NNTPError{480, "authentication required"}
-
-// Handler is a low-level protocol handler
-type Handler func(args []string, s *session, c *textproto.Conn) error
-
-// A NumberedArticle provides local sequence nubers to articles When
-// listing articles in a group.
-type NumberedArticle struct {
-	Num     int64
-	Article *Article
-}
-
-// The Operator that provides the things and does the stuff.
-type Operator interface {
-	ListGroups(max int) ([]*Group, error)
-	GetGroup(name string) (*Group, error)
-	GetArticle(group *Group, id string) (*Article, error)
-	GetArticles(group *Group, from, to int64) ([]NumberedArticle, error)
-	Authorized() bool
-	Authenticate(user, pass string) (Operator, error)
-}
-
-type session struct {
-	server   *Server
-	operator Operator
-	group    *Group
-}
-
-// The Server handle.
-type Server struct {
-	Handlers map[string]Handler
-	Operator Operator
-	group    *Group
-}
-
-func NewServer(operator Operator) *Server {
-	rv := Server{
+func NewServer(operator Operator) *NNTPServer {
+	rv := NNTPServer{
 		Handlers: make(map[string]Handler),
 		Operator: operator,
 	}
@@ -133,7 +49,7 @@ func (s *session) dispatchCommand(cmd string, args []string, c *textproto.Conn) 
 }
 
 // Process an NNTP session.
-func (s *Server) Process(nc net.Conn) {
+func (s *NNTPServer) Process(nc net.Conn) {
 	defer nc.Close()
 	c := textproto.NewConn(nc)
 
@@ -255,7 +171,8 @@ func handleList(args []string, s *session, c *textproto.Conn) error {
 	for _, g := range groups {
 		switch ltype {
 		case "active":
-			fmt.Fprintf(dw, "%s %d %d %v\r\n", g.Name, g.High, g.Low, 0)
+			fmt.Fprintf(dw, "%s.%s %d %d %v\r\n",
+				g.Source, g.Name, g.High, g.Low, g.High-g.Low)
 		case "newsgroups":
 			fmt.Fprintf(dw, "%s %s\r\n", g.Name, g.Description)
 		}
@@ -288,9 +205,15 @@ func handleGroup(args []string, s *session, c *textproto.Conn) error {
 		return err
 	}
 
-	s.group = group
+	s.group = &Group{
+		Name:        group.Name,
+		Description: group.Description,
+		High:        int64(group.High),
+		Low:         int64(group.Low),
+		Count:       int64(group.High) - int64(group.Low),
+	}
 
-	c.PrintfLine("211 %d %d %d %s", group.Count, group.Low, group.High, group.Name)
+	c.PrintfLine("211 %d %d %d %s", s.group.Count, group.Low, group.High, group.Name)
 	return nil
 }
 
@@ -377,6 +300,10 @@ func handleAuthInfo(args []string, s *session, c *textproto.Conn) error {
 
 	c.PrintfLine("350 Continue")
 	a, err := c.ReadLine()
+	if err != nil {
+		return err
+	}
+
 	parts := strings.SplitN(a, " ", 3)
 	if strings.ToLower(parts[0]) != "authinfo" || strings.ToLower(parts[1]) != "pass" {
 		return ErrSyntax

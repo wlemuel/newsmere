@@ -10,17 +10,7 @@ import (
 	"strings"
 )
 
-// NNTPClient is an NNTP client.
-type NNTPClient struct {
-	conn         *textproto.Conn
-	netconn      net.Conn
-	tls          bool
-	Banner       string
-	capabilities []string
-	running      bool
-}
-
-// NewClient for create a nntp client to connect to server
+// New for create a nntp client to connect to server
 func NewClient(network, addr string) (*NNTPClient, error) {
 	netconn, err := net.Dial(network, addr)
 	if err != nil {
@@ -30,7 +20,7 @@ func NewClient(network, addr string) (*NNTPClient, error) {
 	return connect(netconn)
 }
 
-// NewConnClient wraps an existing connection, for example one opened with tls.Dial
+// NewConn wraps an existing connection, for example one opened with tls.Dial
 func NewConnClient(netconn net.Conn) (*NNTPClient, error) {
 	client, err := connect(netconn)
 	if err != nil {
@@ -53,7 +43,6 @@ func connect(netconn net.Conn) (*NNTPClient, error) {
 		conn:    conn,
 		netconn: netconn,
 		Banner:  msg,
-		running: true,
 	}, nil
 }
 
@@ -136,7 +125,7 @@ func (c *NNTPClient) HasCapabilityArgument(capability, argument string) (bool, e
 	}
 	capLine := c.GetCapability(capability)
 	if capLine == "" {
-		return false, errors.New("No such capability")
+		return false, errors.New("no such capability")
 	}
 	argument = strings.ToUpper(argument)
 	for _, capArg := range strings.Fields(capLine)[1:] {
@@ -149,7 +138,11 @@ func (c *NNTPClient) HasCapabilityArgument(capability, argument string) (bool, e
 
 // List groups
 func (c *NNTPClient) List(sub string) (rv []Group, err error) {
-	_, _, err = c.Command("LIST "+sub, 215)
+	cmd := "LIST"
+	if sub != "" {
+		cmd = "LIST " + sub
+	}
+	_, _, err = c.Command(cmd, 215)
 	if err != nil {
 		return
 	}
