@@ -241,4 +241,8 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/emacs,vim,linux,windows,macos,goland,visualstudiocode
 
+# Codespace
+oryxBuildBinary
+
+# Database
 *.db
