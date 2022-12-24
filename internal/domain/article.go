@@ -15,13 +15,8 @@ type Article struct {
 
 // ArticleRepository represent the article's repository contract
 type ArticleRepository interface {
+	GetArticles(groupId uint, prevId uint) ([]Article, error)
 	GetArticleById(id uint) (Article, error)
 	StoreArticle(a *Article) error
 	DeleteArticle(id uint) error
-}
-
-// DBRepository represents the database repository contract
-type DBRepository interface {
-	ArticleRepository
-	GroupRepository
 }

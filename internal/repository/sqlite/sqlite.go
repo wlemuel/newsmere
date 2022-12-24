@@ -23,32 +23,57 @@ func NewSqliteRepo() domain.DBRepository {
 	}
 }
 
+func (r *sqliteRepo) GetArticles(groupId uint, prevId uint) (res []domain.Article, err error) {
+	result := r.DB.Limit(10).Find(&res, "group_id = ? and id > ?", groupId, prevId)
+	err = result.Error
+
+	return
+}
+
 func (r *sqliteRepo) GetArticleById(id uint) (res domain.Article, err error) {
-	r.DB.First(&res, id)
-	err = nil
+	result := r.DB.First(&res, id)
+	err = result.Error
 
 	return
 }
 
 func (r *sqliteRepo) StoreArticle(a *domain.Article) error {
-	return nil
+	result := r.DB.Create(a)
+	return result.Error
 }
 
 func (r *sqliteRepo) DeleteArticle(id uint) error {
-	return nil
+	result := r.DB.Delete(&domain.Article{}, id)
+	return result.Error
 }
 
 func (r *sqliteRepo) GetGroupById(id uint) (res domain.Group, err error) {
-	r.DB.First(&res, id)
-	err = nil
+	result := r.DB.First(&res, id)
+	err = result.Error
 
 	return
 }
 
 func (r *sqliteRepo) StoreGroup(g *domain.Group) error {
-	return nil
+	result := r.DB.Create(g)
+	return result.Error
 }
 
 func (r *sqliteRepo) DeleteGroup(id uint) error {
-	return nil
+	result := r.DB.Delete(&domain.Group{}, id)
+	return result.Error
+}
+
+func (r *sqliteRepo) CreateToken(u *domain.User) (res domain.UserToken, err error) {
+	result := r.DB.First(&res)
+	err = result.Error
+
+	return
+}
+
+func (r *sqliteRepo) GetToken(u *domain.User, token string) (res domain.UserToken, err error) {
+	result := r.DB.First(&res, "user_id = ?", u.ID)
+	err = result.Error
+
+	return
 }

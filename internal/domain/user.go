@@ -9,7 +9,6 @@ type User struct {
 	Pass    string `json:"pass"`
 	Avatar  string `json:"avatar"`
 	Token   string `json:"token"`
-	IsValid bool   `json:"is_valid"`
 	IsAdmin bool   `json:"is_admin"`
 }
 
@@ -18,5 +17,18 @@ type UserToken struct {
 	gorm.Model
 	UserId  uint   `json:"user_id"`
 	Token   string `json:"string"`
-	IsValid bool   `json:"is_valid"`
+}
+
+type UserTokenRepository interface {
+	CreateToken(u *User) (UserToken, error)
+	GetToken(u *User, token string) (UserToken, error)
+	DeleteToken(token string) error
+}
+
+type UserRepository interface {
+	UserTokenRepository
+	CreateUser(name, password string) (User, error)
+	GetUserByToken(token string) (User, error)
+	DeleteUser(id uint) error
+	UpdateUser(u *User) error
 }
