@@ -3,6 +3,7 @@ package nntp
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/textproto"
 	"newsmere/internal/domain"
@@ -44,11 +45,13 @@ func NewRepo(b *domain.Backend) (domain.BackendRepository, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("[%s][%s][%s] connect successful\n", b.Type, b.Name, addr)
 
 	client.name = b.Name
 
 	if b.User != "" {
 		_, err := client.Authenticate(b.User, b.Pass)
+		log.Printf("[%s][%s][%s] auth successful\n", b.Type, b.Name, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -89,6 +92,9 @@ func (c *nntpClient) SyncSub(db domain.DBRepository) error {
 		}
 
 		err = db.StoreSubs(subs)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
