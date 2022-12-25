@@ -2,6 +2,7 @@ package domain
 
 // Backend represents a backend for providing data resource.
 type Backend struct {
+	Type   string `json:"type"`
 	Name   string `json:"name"`
 	User   string `json:"user,omitempty"`
 	Pass   string `json:"pass,omitempty"`

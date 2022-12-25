@@ -1,4 +1,5 @@
 {
+    "debug": true,
     "backends": [
         {
             "type": "nntp",
