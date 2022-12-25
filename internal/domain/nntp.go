@@ -14,7 +14,7 @@ type NNTPArticle struct {
 	Lines  int
 }
 
-// Group represents a usenet newsgroup.
+// nntpGroup represents a usenet newsgroup.
 type NNTPGroup struct {
 	Name        string
 	Description string
