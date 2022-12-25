@@ -4,4 +4,5 @@ package domain
 type DBRepository interface {
 	ArticleRepository
 	GroupRepository
+	SubscriptionRepository
 }
