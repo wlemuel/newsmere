@@ -11,22 +11,36 @@ type apiService struct {
 	host string
 	port int
 
-	engine *gin.Engine
+	core *gin.Engine
 }
 
 func NewDelivery(s *domain.Service) (domain.ServiceDelivery, error) {
 	g := gin.Default()
 
 	service := &apiService{
-		host:   s.Host,
-		port:   s.Port,
-		engine: g,
+		host: s.Host,
+		port: s.Port,
+		core: g,
 	}
+	service.setup()
 
 	return service, nil
 }
 
 func (c *apiService) Run() error {
 	addr := fmt.Sprintf("%s:%d", c.host, c.port)
-	return c.engine.Run(addr)
+	return c.core.Run(addr)
+}
+
+func (c *apiService) Stop() error {
+	return nil
+}
+
+func (c *apiService) setup() error {
+	c.core.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
+	return nil
 }

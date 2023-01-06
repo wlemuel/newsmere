@@ -13,6 +13,11 @@
             "type": "nntp",
             "host": "localhost",
             "port": 10119
+        },
+        {
+            "type": "api",
+            "host": "localhost",
+            "port": 8000
         }
     ]
 }
